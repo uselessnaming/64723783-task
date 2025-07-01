@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CSV 자동완성 검색</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Arial', sans-serif;
+      background-color: #f5f5f5;
+      padding: 40px 20px;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      padding: 30px;
+    }
+
+    h1 {
+      text-align: center;
+      color: #333;
+      margin-bottom: 30px;
+      font-size: 24px;
+    }
+
+    .search-container {
+      position: relative;
+      margin-bottom: 30px;
+    }
+
+    #searchInput {
+      width: 100%;
+      padding: 15px;
+      border: 2px solid #ddd;
+      border-radius: 6px;
+      font-size: 16px;
+      outline: none;
+      transition: border-color 0.3s;
+      background: transparent;
+      position: relative;
+      z-index: 2;
+    }
+
+    #searchInput:focus {
+      border-color: #4CAF50;
+    }
+
+    .autocomplete-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      padding: 15px;
+      border: 2px solid transparent;
+      border-radius: 6px;
+      font-size: 16px;
+      color: #999;
+      pointer-events: none;
+      z-index: 1;
+      background: white;
+    }
+
+    .autocomplete-hint {
+      color: #ccc;
+    }
+
+    .results-container {
+      border-top: 1px solid #eee;
+      padding-top: 20px;
+    }
+
+    .results-title {
+      font-size: 14px;
+      color: #666;
+      margin-bottom: 15px;
+      font-weight: bold;
+    }
+
+    .results-list {
+      list-style: none;
+    }
+
+    .results-list li {
+      padding: 8px 12px;
+      margin: 5px 0;
+      background: #f8f9fa;
+      border-radius: 4px;
+      border-left: 3px solid #4CAF50;
+      color: #333;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .no-results {
+      color: #999;
+      font-style: italic;
+      text-align: center;
+      padding: 20px;
+    }
+
+    .info {
+      background: #e3f2fd;
+      padding: 15px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+      font-size: 14px;
+      color: #1976d2;
+    }
+
+    .person-detail {
+      margin-top: 30px;
+      padding: 20px;
+      background: #f1f8e9;
+      border-left: 5px solid #4CAF50;
+      border-radius: 6px;
+      color: #333;
+      font-size: 15px;
+    }
+
+    .detail-card h2 {
+      margin-bottom: 10px;
+      font-size: 20px;
+      color: #2e7d32;
+    }
+
+    .detail-card p {
+      margin-bottom: 6px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>이름 검색 시스템</h1>
+
+    <div class="info">
+      💡 이름을 입력하면 자동완성과 관련 결과를 확인할 수 있습니다.
+    </div>
+
+    <div class="search-container">
+      <div id="autocompleteOverlay" class="autocomplete-overlay"></div>
+      <input 
+        type="text" 
+        id="searchInput" 
+        placeholder="이름을 입력하세요..."
+        autocomplete="off"
+      >
+    </div>
+
+    <div class="results-container">
+      <div class="results-title">검색 결과:</div>
+      <ul id="resultsList" class="results-list">
+        <li class="no-results">검색어를 입력해주세요</li>
+      </ul>
+    </div>
+
+    <div id="personDetail" class="person-detail" style="display: none;"></div>
+  </div>
+
+  <script>
+    const names = `Alexander,Alice,Amanda,Andrew,Angela,Anna,Anthony,Ashley,Barbara,Benjamin,Betty,Brian,Carol,Charles,Christopher,Daniel,David,Deborah,Donald,Donna,Dorothy,Edward,Elizabeth,Emily,Emma,Eric,Frances,Frank,Gary,George,Helen,Henry,James,Jason,Jennifer,Jessica,John,Joseph,Joshua,Karen,Kimberly,Larry,Laura,Linda,Lisa,Margaret,Maria,Mark,Mary,Matthew,Michael,Michelle,Nancy,Nicole,Noah,Olivia,Patricia,Paul,Rachel,Rebecca,Richard,Robert,Ronald,Ruth,Sandra,Sarah,Scott,Sharon,Sophia,Stephen,Steven,Susan,Thomas,Timothy,Victoria,Virginia,Walter,Wayne,William,Abigail,Adam,Adrian,Albert,Andrea,Annie,Arthur,Austin,Brenda,Bruce,Carl,Catherine,Christine,Cynthia,Diane,Douglas,Eugene,Hannah,Harold,Isabella,Jack,Jacob,Jane,Janet,Jerry,Joan,Jonathan,Juan,Julie,Justin,Katherine,Keith,Kevin,Laura,Louis,Martha,Mason,Nathan,Noah,Peter,Ralph,Raymond,Roger,Ryan,Samantha,Sean,Shirley,Tyler,Virginia,Willie`
+      .split(',').map(n => n.trim());
+
+    const personDetails = {
+      Alice: { age: 25, job: "Frontend Developer", bio: "React와 Vue를 주로 사용하는 개발자입니다." },
+      John: { age: 32, job: "Product Manager", bio: "다양한 IT 스타트업에서 PM으로 일했습니다." },
+      Emma: { age: 28, job: "UI Designer", bio: "Figma와 Adobe XD를 능숙하게 다룹니다." },
+      Michael: { age: 40, job: "Backend Engineer", bio: "Node.js와 Python 기반의 서버 개발자입니다." }
+      // 다른 이름도 원하면 추가 가능
+    };
+
+    function getMatches(query) {
+      return names.filter(name =>
+        name.toLowerCase().includes(query.toLowerCase())
+      );
+    }
+
+    function getAutocomplete(query) {
+      return names.find(name =>
+        name.toLowerCase().startsWith(query.toLowerCase())
+      );
+    }
+
+    function showPersonDetail(name) {
+      const detailBox = document.getElementById('personDetail');
+      const detail = personDetails[name];
+
+      if (!detail) {
+        detailBox.innerHTML = `<div class="no-results">"${name}"에 대한 상세 정보가 없습니다.</div>`;
+      } else {
+        detailBox.innerHTML = `
+          <div class="detail-card">
+            <h2>${name}</h2>
+            <p><strong>나이:</strong> ${detail.age}</p>
+            <p><strong>직업:</strong> ${detail.job}</p>
+            <p><strong>소개:</strong> ${detail.bio}</p>
+          </div>
+        `;
+      }
+
+      detailBox.style.display = 'block';
+    }
+
+    function updateUI(query) {
+      const resultsList = document.getElementById('resultsList');
+      const overlay = document.getElementById('autocompleteOverlay');
+      const matches = getMatches(query);
+      const suggestion = getAutocomplete(query);
+
+      // 결과 목록 업데이트
+      resultsList.innerHTML = '';
+      if (!query.trim()) {
+        resultsList.innerHTML = `<li class="no-results">검색어를 입력해주세요</li>`;
+      } else if (matches.length === 0) {
+        resultsList.innerHTML = `<li class="no-results">검색 결과가 없습니다</li>`;
+      } else {
+        matches.forEach(name => {
+          const li = document.createElement('li');
+          li.textContent = name;
+          li.addEventListener('click', () => showPersonDetail(name));
+          resultsList.appendChild(li);
+        });
+      }
+
+      // 자동완성 힌트 표시
+      overlay.innerHTML = '';
+      if (suggestion && query.length > 0) {
+        const transparent = document.createElement('span');
+        transparent.style.color = 'transparent';
+        transparent.textContent = query;
+
+        const hint = document.createElement('span');
+        hint.className = 'autocomplete-hint';
+        hint.textContent = suggestion.slice(query.length);
+
+        overlay.appendChild(transparent);
+        overlay.appendChild(hint);
+      }
+
+      // 검색창 바꾸면 이전 상세정보는 숨김 처리
+      const detailBox = document.getElementById('personDetail');
+      detailBox.style.display = 'none';
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const input = document.getElementById('searchInput');
+      input.addEventListener('input', (e) => {
+        updateUI(e.target.value);
+      });
+
+      console.log('이름 검색 시스템이 초기화되었습니다.');
+    });
+  </script>
+</body>
+</html>

@@ -167,42 +167,66 @@
   </div>
 
   <script>
-    const names = `Alexander,Alice,Amanda,Andrew,Angela,Anna,Anthony,Ashley,Barbara,Benjamin,Betty,Brian,Carol,Charles,Christopher,Daniel,David,Deborah,Donald,Donna,Dorothy,Edward,Elizabeth,Emily,Emma,Eric,Frances,Frank,Gary,George,Helen,Henry,James,Jason,Jennifer,Jessica,John,Joseph,Joshua,Karen,Kimberly,Larry,Laura,Linda,Lisa,Margaret,Maria,Mark,Mary,Matthew,Michael,Michelle,Nancy,Nicole,Noah,Olivia,Patricia,Paul,Rachel,Rebecca,Richard,Robert,Ronald,Ruth,Sandra,Sarah,Scott,Sharon,Sophia,Stephen,Steven,Susan,Thomas,Timothy,Victoria,Virginia,Walter,Wayne,William,Abigail,Adam,Adrian,Albert,Andrea,Annie,Arthur,Austin,Brenda,Bruce,Carl,Catherine,Christine,Cynthia,Diane,Douglas,Eugene,Hannah,Harold,Isabella,Jack,Jacob,Jane,Janet,Jerry,Joan,Jonathan,Juan,Julie,Justin,Katherine,Keith,Kevin,Laura,Louis,Martha,Mason,Nathan,Noah,Peter,Ralph,Raymond,Roger,Ryan,Samantha,Sean,Shirley,Tyler,Virginia,Willie`
-      .split(',').map(n => n.trim());
+    let people = [];
 
-    const personDetails = {
-      Alice: { age: 25, job: "Frontend Developer", bio: "React와 Vue를 주로 사용하는 개발자입니다." },
-      John: { age: 32, job: "Product Manager", bio: "다양한 IT 스타트업에서 PM으로 일했습니다." },
-      Emma: { age: 28, job: "UI Designer", bio: "Figma와 Adobe XD를 능숙하게 다룹니다." },
-      Michael: { age: 40, job: "Backend Engineer", bio: "Node.js와 Python 기반의 서버 개발자입니다." }
-      // 다른 이름도 원하면 추가 가능
-    };
+    async function loadCsvData(filePath){
+        console.log("file path : ", filePath);
+        const res = await fetch(filePath);
+        console.log("res : ", res);
+        const text = await res.text();
+        console.log("load csv data : ", text);
+        return parseCsv(text);
+    }
+
+    function parseCsv(csv){
+      console.log("parsed csv function call");
+      const lines = csv.trim().split('\n');
+      console.log(`lines : ${lines}`);
+      const headers = lines[0].split(',').map(h => h.trim());
+      console.log("headers", headers);
+      console.log("lines", lines);
+      lines.forEach((line, i)=> {
+        console.log(`Line ${i}: ${line}`);
+      });
+
+      const parsed = lines.slice(1).map(line => {
+        const values = line.split(',').map(v => v.trim());
+        console.log("parsed data : ", values);
+        return {
+          name: values[0],
+          age: values[1],
+          gender: values[2],
+        };
+      });
+      console.log("parsed data : ", parsed);
+
+      return parsed;
+    }
 
     function getMatches(query) {
-      return names.filter(name =>
-        name.toLowerCase().includes(query.toLowerCase())
+      return people.filter(person =>
+        person.name.toLowerCase().includes(query.toLowerCase())
       );
     }
 
     function getAutocomplete(query) {
-      return names.find(name =>
-        name.toLowerCase().startsWith(query.toLowerCase())
+      const person = people.find(p =>
+        p.name.toLowerCase().startsWith(query.toLowerCase())
       );
+      return person ? person.name: null;
     }
 
-    function showPersonDetail(name) {
+    function showPersonDetail(person) {
       const detailBox = document.getElementById('personDetail');
-      const detail = personDetails[name];
-
-      if (!detail) {
-        detailBox.innerHTML = `<div class="no-results">"${name}"에 대한 상세 정보가 없습니다.</div>`;
+      
+      if (!person) {
+        detailBox.innerHTML = `<div class="no-results">해당 인물에 대한 상세 정보가 없습니다.</div>`;
       } else {
         detailBox.innerHTML = `
           <div class="detail-card">
-            <h2>${name}</h2>
-            <p><strong>나이:</strong> ${detail.age}</p>
-            <p><strong>직업:</strong> ${detail.job}</p>
-            <p><strong>소개:</strong> ${detail.bio}</p>
+            <h2>${person.name}</h2>
+            <p><strong>나이:</strong> ${person.age}</p>
+            <p><strong>직업:</strong> ${person.gender == "W" ? "여성": "남성"}</p>
           </div>
         `;
       }
@@ -223,10 +247,10 @@
       } else if (matches.length === 0) {
         resultsList.innerHTML = `<li class="no-results">검색 결과가 없습니다</li>`;
       } else {
-        matches.forEach(name => {
+        matches.forEach(person => {
           const li = document.createElement('li');
-          li.textContent = name;
-          li.addEventListener('click', () => showPersonDetail(name));
+          li.textContent = person.name;
+          li.addEventListener('click', () => showPersonDetail(person));
           resultsList.appendChild(li);
         });
       }
@@ -246,12 +270,11 @@
         overlay.appendChild(hint);
       }
 
-      // 검색창 바꾸면 이전 상세정보는 숨김 처리
-      const detailBox = document.getElementById('personDetail');
-      detailBox.style.display = 'none';
+      document.getElementById('personDetail').style.display = 'none';
     }
 
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
+      people = await loadCsvData('data.csv');
       const input = document.getElementById('searchInput');
       input.addEventListener('input', (e) => {
         updateUI(e.target.value);

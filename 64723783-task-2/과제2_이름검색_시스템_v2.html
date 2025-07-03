@@ -170,35 +170,23 @@
     let people = [];
 
     async function loadCsvData(filePath){
-        console.log("file path : ", filePath);
         const res = await fetch(filePath);
-        console.log("res : ", res);
         const text = await res.text();
-        console.log("load csv data : ", text);
         return parseCsv(text);
     }
 
     function parseCsv(csv){
-      console.log("parsed csv function call");
       const lines = csv.trim().split('\n');
-      console.log(`lines : ${lines}`);
       const headers = lines[0].split(',').map(h => h.trim());
-      console.log("headers", headers);
-      console.log("lines", lines);
-      lines.forEach((line, i)=> {
-        console.log(`Line ${i}: ${line}`);
-      });
 
       const parsed = lines.slice(1).map(line => {
         const values = line.split(',').map(v => v.trim());
-        console.log("parsed data : ", values);
         return {
           name: values[0],
           age: values[1],
           gender: values[2],
         };
       });
-      console.log("parsed data : ", parsed);
 
       return parsed;
     }
